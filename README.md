@@ -22,10 +22,12 @@ Then open **http://localhost:3000**.
 
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000/api
-- MySQL: localhost:3306 (user/pass/db default to `uptime`, see `.env.example`)
+- MySQL: localhost:3306 (user/pass/db default to `uptime`)
 
-To customize the check interval or DB credentials, copy `.env.example` to `.env` before running
-`docker compose up`.
+To customize the check interval or DB credentials, create a `.env` file in the repo root with any
+of `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, or
+`CHECK_INTERVAL_SECONDS` before running `docker compose up` — `docker-compose.yml` picks it up
+automatically. Everything has a working default, so this step is optional.
 
 ## Testing Up/Down Detection
 
