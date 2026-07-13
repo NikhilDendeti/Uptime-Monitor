@@ -10,6 +10,8 @@ A React dashboard polls the API and shows live up/down status.
 docker-compose.yml   Orchestrates mysql + backend + frontend
 ```
 
+See [AI_LOG.md](./AI_LOG.md) for the AI collaboration log.
+
 ## 1-Line Setup
 
 ```bash
