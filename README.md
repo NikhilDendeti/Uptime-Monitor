@@ -113,58 +113,28 @@ The frontend dev server proxies `/api` to `http://localhost:8000` (see `frontend
 
 ## Deployment Sketch (AWS)
 
-For a real deployment, the shape stays the same as the compose file — just swap containers for
-managed services:
+Same shape as the compose file, just swapped for managed services:
 
-- **ECR**: two repos, one per image (`backend`, `frontend`), built by CI and pushed on merge.
-- **ECS Fargate**: one service per image, each with 1 task to start. No servers to manage.
-- **RDS MySQL**: replaces the `db` container. Single small instance (`db.t4g.micro`) is plenty
-  at this scale.
-- **ALB**: routes `/` to the frontend service and `/api/*` to the backend service (or serve the
-  frontend from S3 + CloudFront and only put the backend behind the ALB — either works at MVP
-  scale).
-- **Secrets Manager**: holds the MySQL credentials, injected into the backend task as env vars.
+- **ECR** — one repo per image (`backend`, `frontend`)
+- **ECS Fargate** — one small service per image, 1 task each. No servers to manage.
+- **RDS MySQL** — replaces the `db` container (`db.t4g.micro` is plenty at this scale)
+- **ALB** — routes `/` to the frontend service and `/api/*` to the backend service
 
 ```hcl
 resource "aws_ecr_repository" "backend"  { name = "uptime-monitor-backend" }
 resource "aws_ecr_repository" "frontend" { name = "uptime-monitor-frontend" }
 
-resource "aws_ecs_cluster" "uptime" {
-  name = "uptime-monitor"
-}
+resource "aws_ecs_cluster" "uptime" { name = "uptime-monitor" }
 
 resource "aws_db_instance" "mysql" {
-  identifier        = "uptime-monitor-db"
-  engine            = "mysql"
-  engine_version    = "8.4"
-  instance_class    = "db.t4g.micro"
-  allocated_storage = 20
-  db_name           = "uptime"
-  username          = "uptime"
-  password          = var.db_password
+  identifier          = "uptime-monitor-db"
+  engine              = "mysql"
+  instance_class      = "db.t4g.micro"
+  allocated_storage   = 20
+  db_name             = "uptime"
+  username            = "uptime"
+  password            = var.db_password
   skip_final_snapshot = true
-}
-
-resource "aws_ecs_task_definition" "backend" {
-  family                   = "uptime-backend"
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = "256"
-  memory                   = "512"
-  container_definitions = jsonencode([{
-    name  = "backend"
-    image = "${aws_ecr_repository.backend.repository_url}:latest"
-    portMappings = [{ containerPort = 8000 }]
-    environment = [
-      { name = "CHECK_INTERVAL_SECONDS", value = "60" },
-      { name = "MYSQL_HOST", value = aws_db_instance.mysql.address },
-      { name = "MYSQL_DATABASE", value = "uptime" },
-      { name = "MYSQL_USER", value = "uptime" }
-    ]
-    secrets = [
-      { name = "MYSQL_PASSWORD", valueFrom = aws_secretsmanager_secret.db_password.arn }
-    ]
-  }])
 }
 
 resource "aws_ecs_service" "backend" {
@@ -173,15 +143,11 @@ resource "aws_ecs_service" "backend" {
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = 1
   launch_type     = "FARGATE"
-  network_configuration {
-    subnets         = var.private_subnets
-    security_groups = [aws_security_group.backend.id]
-  }
 }
 ```
 
-This is illustrative, not production-hardened — no autoscaling, multi-AZ, or WAF configuration
-included on purpose, since that's out of scope for this MVP.
+Illustrative, not production-hardened — no autoscaling, multi-AZ, or WAF, since that's out of
+scope for an MVP.
 
 ## Known Limitations (MVP scope)
 

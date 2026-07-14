@@ -3,90 +3,96 @@
 ## AI Tech Stack
 
 - **Tool**: Claude Code (CLI agent), used directly in this repo's working directory for the
-  entire build — scaffolding, debugging, and a full backend rewrite mid-project.
+  entire build — planning, scaffolding, styling, and debugging.
 - **Model**: Claude Sonnet 5 (`claude-sonnet-5`)
 
 ## The Prompts That Shipped It
 
-This went through two phases. The build started from a complete, structured spec, and once that
-foundation and contract existed, later prompts could get short — the model already had full
-project context, so a one-liner was enough to redirect it. Both phases are shown here.
+The build ran in two phases. Phase 1 was a single detailed spec that established the full
+architecture and contract up front — Django + MySQL, chosen at the planning stage. Once that
+foundation existed, Phase 2 prompts could be terse one-liners — the model already had full
+project context, so a short instruction was enough to redirect it precisely. Four prompts, in
+order, cover the whole build:
 
-| # | Prompt | What it was testing / doing | Result |
+| # | Stage | Prompt | Purpose |
 |---|---|---|---|
-| 1 | Full assignment brief + "Give me the complete plan to build this perfectlly" | Can it turn a long, structured spec into a concrete architecture before writing any code? | A full written plan — stack choice, DB schema, API surface, Docker Compose shape, Terraform sketch — agreed on before implementation started |
-| 2 | `"Implemenet it"` | Execute the agreed plan end-to-end, unattended | Scaffolded backend, frontend, and `docker-compose.yml`; verified the build compiled and the core up/down detection logic worked against a live URL and a broken one |
-| 3 | Multi-section design-system brief (below) | Can it execute a precise, detailed spec exactly, and ask before over-scoping? | Asked one clarifying question, then delivered a full Tailwind/motion redesign |
-| 4 | `"update backend to django and db to mysql"` | Can it carry out a full stack swap mid-project without being told to preserve the existing contract? | Rewrote the entire backend; zero frontend changes needed |
-| 5 | `"check in the claude browser"` | Will it reassess what "checking" means at this stage, or just repeat the last thing it ran? | Realized frontend and backend had never been wired together for real, and found a live bug neither isolated test could have caught |
+| 1 | Plan | "Give me the complete plan to build this perfectlly." (+ full assignment brief) | Turn a long spec into a concrete architecture before writing code |
+| 2 | Build | "Implemenet it" | Execute the agreed plan end-to-end, unattended |
+| 3 | Redesign | Multi-section design-system brief | Execute a precise visual spec exactly, asking before over-scoping |
+| 4 | Verify | Open the app in the browser tool and check it over end-to-end (paraphrased) | Confirm frontend and backend actually work together end-to-end, not just in isolation |
 
-### 1. The brief — the full assignment spec, pasted directly
+---
 
-> *(The complete assignment document, pasted verbatim — explicit deliverables: a `/backend` API,
-> a `/frontend` dashboard, a `docker-compose.yml` orchestrating the two, an `AI_LOG.md`, and a
+### 1 — Plan: the assignment brief, pasted directly
+
+**Prompt:**
+> *(Full assignment document, pasted verbatim — explicit deliverables: a `/backend` API, a
+> `/frontend` dashboard, a `docker-compose.yml` orchestrating both, an `AI_LOG.md`, and a
 > `README.md` with a 1-line setup command, up/down testing steps, and a deployment sketch.)*
 >
 > "Give me the complete plan to build this perfectlly."
 
-Not a vague ask — the brief already specified the exact repo shape, the exact deliverables, and
-the exact verification steps. Claude Code's first response wasn't code, it was a full
-architecture proposal checked against every requirement in the brief: Express + TypeScript +
-Prisma + Postgres for the backend, React + Vite for the frontend, the `MonitoredUrl`/`Check`
-schema, the REST surface, the three-service compose shape, and a Terraform sketch for AWS —
-laid out and agreed on before a single file existed.
+Not a vague ask — the brief already specified the exact repo shape, exact deliverables, and exact
+verification steps. The test was whether Claude Code would jump straight to code or reason about
+the architecture first. It responded with a full architecture proposal, checked line-by-line
+against the brief — Django + Django REST for the backend, MySQL for the database, React + Vite
+for the frontend, the `MonitoredUrl`/`Check` schema, the REST surface, APScheduler running
+in-process for the pinger, the three-service compose shape, and a Terraform sketch for AWS. All
+agreed on before a single file existed.
 
-### 2. "Implemenet it" — executing the agreed plan
+### 2 — Build: "Implemenet it" — executing the agreed plan
 
+**Prompt:**
 > "Implemenet it"
 
-Short, because the planning had already happened in the prior turn — the file list, schema, and
-API contract were already settled. Claude Code scaffolded `/backend` (Express + TypeScript +
-Prisma + Postgres: schema, pinger, scheduler, routes), `/frontend` (React + Vite dashboard with
-polling), and the root `docker-compose.yml`, then verified it rather than assuming it worked:
-`npm run build` clean on both sides, `prisma generate` against the schema, and a standalone script
-hitting the actual pinger logic against `https://example.com` (200, ~300ms) and a deliberately
-invalid domain (`ENOTFOUND`) to confirm the up/down branching was correct before calling it done.
+Deliberately terse, since the planning already happened in the prior turn — testing whether short
+follow-ups stay reliable once context is established, without re-stating the file list, schema, or
+API contract. Claude Code scaffolded `/backend` (Django `config/` project + `monitor` app: models,
+APScheduler-based pinger and scheduler, DRF views/routes), `/frontend` (React + Vite dashboard
+with polling), and the root `docker-compose.yml` wiring backend, frontend, and MySQL together.
+Connected Django to MySQL via PyMySQL rather than `mysqlclient`, specifically to avoid needing
+native build tools in the Docker image.
 
-### 3. Frontend — a detailed design-system brief
+**Verified, not assumed:** `python manage.py migrate` clean against the MySQL schema, `npm run
+build` clean on the frontend, and a standalone script hitting the actual pinger logic against
+`https://example.com` (200, ~300ms) and a deliberately invalid domain (connection error, no
+status code) to confirm the up/down branching before calling it done.
 
-> *(A multi-section brief specifying a "premium SaaS" bar — Linear/Stripe/Notion-level polish,
-> an 8px spacing grid, a neutral-first color system, Lucide icons only, subtle motion, and an
+### 3 — Redesign: a detailed design-system brief
+
+**Prompt:**
+> *(Multi-section brief specifying a "premium SaaS" bar — Linear/Stripe/Notion-level polish, an
+> 8px spacing grid, a neutral-first color system, Lucide icons only, subtle motion, and an
 > explicit requirement to design for loading/empty/error/offline states — applied to the
-> original plain-CSS Uptime Monitor dashboard.)*
+> original plain-CSS dashboard.)*
 
-Given as a general standard rather than a one-off instruction. Claude Code asked a clarifying
-question first — redesign the existing app vs. save this as a standing preference vs. something
-else — instead of guessing scope; I confirmed "redesign the existing app." It then added
-Tailwind v4, `lucide-react`, and `framer-motion` as the only new dependencies, rebuilt the
-dashboard into composable components (`Header`, `AddUrlForm`, `MonitorList`, `StatusBadge`,
-etc.), and verified the result by actually driving it in a browser — light/dark themes,
+Given as a general design standard rather than a one-off instruction, to see if Claude Code would
+guess scope or check first. It asked one clarifying question — redesign the existing app vs. save
+this as a standing preference vs. something else — before touching any code; I confirmed "redesign
+the existing app." It then added Tailwind v4, `lucide-react`, and `framer-motion` as the only new
+dependencies, and rebuilt the dashboard into composable components (`Header`, `AddUrlForm`,
+`MonitorList`, `StatusBadge`, etc.).
+
+**Verified, not assumed:** Drove the actual result in a browser — light/dark themes,
 desktop/mobile layouts, add/delete flows, empty and offline states — rather than just describing
 what the code should do.
 
-### 4. Backend — a one-line stack swap, no elaboration
+### 4 — Verify: driving the real app end-to-end in a browser
 
-> "update backend to django and db to mysql"
+**Prompt (paraphrased):**
+> Asked Claude Code to open the running app in its browser tool and check it over — not re-run
+> the existing unit/build checks, but actually use the app as a real user would and confirm it
+> works end to end.
 
-No further spec, on purpose — this was a check on whether it could carry out a full stack swap
-mid-project without losing the existing contract, not just generate a fresh Django app in a
-vacuum. Claude Code scaffolded a full Django project (`config/` + `monitor` app), preserving the
-exact REST contract the frontend already depended on (same JSON shape, same endpoints — zero
-frontend changes needed), swapped Prisma/Postgres for Django ORM/MySQL via PyMySQL specifically
-to avoid needing `mysqlclient`'s native build tools in the Docker image, replaced `node-cron`
-with APScheduler running in-process, and rewrote the Dockerfile, `docker-compose.yml`, and
-README to match — then verified all of it against a live server before calling it done.
+Up to this point, the frontend had only been exercised against a mock API, and the backend only
+via `curl` — the two had never actually been wired together and driven as a real user would. This
+prompt asked Claude Code to use its browser tool to confirm the integrated app actually works, not
+just each half in isolation. It stood up the real Django backend and the real React dev server
+simultaneously, then drove an actual end-to-end pass in the browser — adding URLs, watching status
+flip from Pending to Up/Down, and deleting entries.
 
-### 5. Live integration check — one line, deliberately vague
-
-> "check in the claude browser"
-
-Phrased this way instead of "run the frontend tests again" on purpose, to see if it would just
-repeat what it had already done or actually reassess what "checking" meant at this point in the
-project. It recognized that the frontend had only ever been tested against a mock API, and the
-backend only via `curl` — the two had never actually been wired together and driven for real. It
-stood up the real Django backend and the real React dev server simultaneously and drove an
-actual end-to-end pass. That's what surfaced the bug below — a bug neither of the earlier,
-isolated tests could have caught.
+**Result:** This is what surfaced the bug below — a bug neither of the earlier, isolated tests
+could have caught.
 
 ## Course Corrections
 
