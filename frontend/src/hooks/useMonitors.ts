@@ -36,7 +36,16 @@ export function useMonitors(): UseMonitorsResult {
   useEffect(() => {
     load();
     const interval = setInterval(load, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+
+    const onVisible = () => {
+      if (!document.hidden) load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [load]);
 
   const add = useCallback(

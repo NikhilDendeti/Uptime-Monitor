@@ -40,8 +40,7 @@ if MYSQL_HOST:
         }
     }
 else:
-    # No MySQL configured (e.g. running `manage.py runserver` locally without
-    # Docker) — fall back to a local SQLite file so there's nothing to install.
+
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -54,7 +53,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 TIME_ZONE = 'Asia/Kolkata'
 USE_TZ = True
 
-# How often the background scheduler pings every registered URL.
 CHECK_INTERVAL_SECONDS = int(os.environ.get('CHECK_INTERVAL_SECONDS', '60'))
 
 LOGGING = {

@@ -78,15 +78,32 @@ curl localhost:8000/api/urls/1/checks
 ## Local Development (without Docker)
 
 ```bash
-# Backend (requires a local MySQL, or point the MYSQL_* env vars at any reachable one)
+# Backend (no MySQL needed — falls back to a local SQLite file automatically.
+# To test against MySQL instead, set MYSQL_HOST/MYSQL_DATABASE/MYSQL_USER/MYSQL_PASSWORD.)
 cd backend
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+python -m venv .venv       # use `python3` here if `python` isn't found (common on macOS/Linux)
+```
+
+Activate the virtual environment — the command depends on your OS and shell:
+
+| OS / Shell | Command |
+|---|---|
+| macOS / Linux (bash, zsh) | `source .venv/bin/activate` |
+| Windows (PowerShell) | `.venv\Scripts\Activate.ps1` |
+| Windows (cmd.exe) | `.venv\Scripts\activate.bat` |
+| Windows (Git Bash) | `source .venv/Scripts/activate` |
+
+If PowerShell blocks the script with an execution-policy error, run
+`Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` first, or activate via cmd.exe instead.
+
+```bash
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver 0.0.0.0:8000
+```
 
-# Frontend (in a separate terminal)
+```bash
+# Frontend (in a separate terminal — identical on every OS)
 cd frontend
 npm install
 npm run dev
